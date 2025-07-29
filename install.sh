@@ -122,7 +122,7 @@ else
     # Append new entries
     echo "" >> "$rc_file"
     echo "# Claude Code environment variables" >> "$rc_file"
-    echo "export ANTHROPIC_BASE_URL= https://maas-api.lanyun.net/anthropic" >> "$rc_file"
+    echo "export ANTHROPIC_BASE_URL=http://test.lanyun.net:8023/anthropic/" >> "$rc_file"
     echo "export ANTHROPIC_API_KEY=$api_key" >> "$rc_file"
     echo "export ANTHROPIC_MODEL=$model" >> "$rc_file"
     echo "✅ Environment variables added to $rc_file"
