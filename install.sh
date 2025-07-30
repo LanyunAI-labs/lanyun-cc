@@ -70,8 +70,11 @@ node --eval '
 
 # Prompt user for API key
 echo "🔑 Please enter your lanyun API key:"
+echo "🔑 请输入您的蓝云 API 密钥："
 echo "   You can get your API key from: https://maas.lanyun.net/"
+echo "   您可以从这里获取 API 密钥：https://maas.lanyun.net/"
 echo "   Note: The input is hidden for security. Please paste your API key directly."
+echo "   注意：为了安全起见，输入内容将被隐藏。请直接粘贴您的 API 密钥。"
 echo ""
 read -s api_key
 echo ""
@@ -84,6 +87,7 @@ fi
 # Prompt user for model (optional, default is k2)
 echo ""
 echo "🤖 Please enter the Claude model to use (press Enter for default 'k2'):"
+echo "🤖 请输入要使用的 Claude 模型（按回车使用默认值 'k2'）："
 echo ""
 read model
 echo ""
@@ -138,6 +142,7 @@ fi
 
 echo ""
 echo "🎉 Installation completed successfully!"
+echo "🎉 安装成功完成！"
 echo ""
 
 # Check if script was sourced
