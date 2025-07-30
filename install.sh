@@ -119,29 +119,23 @@ esac
 echo ""
 echo "📝 Adding environment variables to $rc_file..."
 
-# Kill any existing claude processes to avoid conflicts
-echo "🧹 Cleaning up existing Claude processes..."
-pkill -f claude 2>/dev/null || true
-sleep 1
-
 # Check if ALL three variables exist
-has_base_url=$(grep -c "export ANTHROPIC_BASE_URL=" "$rc_file" 2>/dev/null || echo 0)
-has_api_key=$(grep -c "export ANTHROPIC_API_KEY=" "$rc_file" 2>/dev/null || echo 0)
-has_model=$(grep -c "export ANTHROPIC_MODEL=" "$rc_file" 2>/dev/null || echo 0)
+has_base_url=$(grep -c "ANTHROPIC_BASE_URL" "$rc_file" 2>/dev/null || echo 0)
+has_api_key=$(grep -c "ANTHROPIC_API_KEY" "$rc_file" 2>/dev/null || echo 0)
+has_model=$(grep -c "ANTHROPIC_MODEL" "$rc_file" 2>/dev/null || echo 0)
 
-if [ "$has_base_url" -gt 0 ] || [ "$has_api_key" -gt 0 ] || [ "$has_model" -gt 0 ]; then
+if [ "$has_base_url" -gt 0 ] && [ "$has_api_key" -gt 0 ] && [ "$has_model" -gt 0 ]; then
     echo "⚠️  Environment variables already exist in $rc_file. Updating with new values..."
     # Remove old entries (compatible with both macOS and Linux)
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' '/^export ANTHROPIC_BASE_URL=/d' "$rc_file"
-        sed -i '' '/^export ANTHROPIC_API_KEY=/d' "$rc_file"
-        sed -i '' '/^export ANTHROPIC_MODEL=/d' "$rc_file"
-        sed -i '' '/^# Claude Code environment variables/d' "$rc_file"
+        sed -i.bak '/ANTHROPIC_BASE_URL/d' "$rc_file"
+        sed -i.bak '/ANTHROPIC_API_KEY/d' "$rc_file"
+        sed -i.bak '/ANTHROPIC_MODEL/d' "$rc_file"
+        rm -f "$rc_file.bak"
     else
-        sed -i '/^export ANTHROPIC_BASE_URL=/d' "$rc_file"
-        sed -i '/^export ANTHROPIC_API_KEY=/d' "$rc_file"
-        sed -i '/^export ANTHROPIC_MODEL=/d' "$rc_file"
-        sed -i '/^# Claude Code environment variables/d' "$rc_file"
+        sed -i '/ANTHROPIC_BASE_URL/d' "$rc_file"
+        sed -i '/ANTHROPIC_API_KEY/d' "$rc_file"
+        sed -i '/ANTHROPIC_MODEL/d' "$rc_file"
     fi
 fi
 
