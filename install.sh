@@ -119,46 +119,42 @@ esac
 echo ""
 echo "📝 Adding environment variables to $rc_file..."
 
-# Check if variables already exist to avoid duplicates
-if [ -f "$rc_file" ] && grep -q "ANTHROPIC_BASE_URL\|ANTHROPIC_API_KEY\|ANTHROPIC_MODEL" "$rc_file"; then
-    echo "⚠️ Environment variables already exist in $rc_file. Skipping..."
-else
-    # Append new entries
-    echo "" >> "$rc_file"
-    echo "# Claude Code environment variables" >> "$rc_file"
-    echo "export ANTHROPIC_BASE_URL=https://maas-api.lanyun.net/anthropic-k2/" >> "$rc_file"
-    echo "export ANTHROPIC_API_KEY=$api_key" >> "$rc_file"
-    echo "export ANTHROPIC_MODEL=$model" >> "$rc_file"
-    echo "✅ Environment variables added to $rc_file"
+# Check if ALL three variables exist
+has_base_url=$(grep -c "ANTHROPIC_BASE_URL" "$rc_file" 2>/dev/null || echo 0)
+has_api_key=$(grep -c "ANTHROPIC_API_KEY" "$rc_file" 2>/dev/null || echo 0)
+has_model=$(grep -c "ANTHROPIC_MODEL" "$rc_file" 2>/dev/null || echo 0)
+
+if [ "$has_base_url" -gt 0 ] && [ "$has_api_key" -gt 0 ] && [ "$has_model" -gt 0 ]; then
+    echo "⚠️  Environment variables already exist in $rc_file. Updating with new values..."
+    # Remove old entries (compatible with both macOS and Linux)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i.bak '/ANTHROPIC_BASE_URL/d' "$rc_file"
+        sed -i.bak '/ANTHROPIC_API_KEY/d' "$rc_file"
+        sed -i.bak '/ANTHROPIC_MODEL/d' "$rc_file"
+        rm -f "$rc_file.bak"
+    else
+        sed -i '/ANTHROPIC_BASE_URL/d' "$rc_file"
+        sed -i '/ANTHROPIC_API_KEY/d' "$rc_file"
+        sed -i '/ANTHROPIC_MODEL/d' "$rc_file"
+    fi
 fi
 
-# If script is being sourced, load the environment variables
-if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    echo ""
-    echo "🔄 Loading environment variables..."
-    source "$rc_file"
-    echo "✅ Environment variables loaded in current shell!"
-fi
+# Add/update entries
+echo "" >> "$rc_file"
+echo "# Claude Code environment variables" >> "$rc_file"
+echo "export ANTHROPIC_BASE_URL=https://maas-api.lanyun.net/anthropic-k2/" >> "$rc_file"
+echo "export ANTHROPIC_API_KEY=$api_key" >> "$rc_file"
+echo "export ANTHROPIC_MODEL=$model" >> "$rc_file"
+echo "✅ Environment variables added/updated in $rc_file"
 
 echo ""
 echo "🎉 Installation completed successfully!"
 echo "🎉 安装成功完成！"
 echo ""
-
-# Check if script was sourced
-if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    echo "🚀 You can now start using Claude Code with:"
-    echo "🚀 现在您可以开始使用 Claude Code 了："
-    echo "   claude"
-else
-    echo "⚠️  IMPORTANT: To use the environment variables in your current shell, please run:"
-    echo "⚠️  重要提示：要在当前 shell 中使用环境变量，请运行："
-    echo "   source $rc_file"
-    echo ""
-    echo "   Or restart your terminal."
-    echo "   或者重启您的终端。"
-    echo ""
-    echo "🚀 After that, you can start using Claude Code with:"
-    echo "🚀 之后，您可以使用以下命令启动 Claude Code："
-    echo "   claude"
-fi
+echo "⚠️  IMPORTANT: Run this command to activate Claude Code:"
+echo "⚠️  重要：运行以下命令激活 Claude Code："
+echo ""
+echo "   source $rc_file"
+echo ""
+echo "🚀 After that, you can use: claude"
+echo "🚀 之后即可使用：claude"
