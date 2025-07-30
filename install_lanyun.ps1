@@ -1,140 +1,141 @@
-# Windows PowerShell script for installing Claude Code with Lanyun settings
-# Requires Administrator privileges for environment variable settings
+# Simplified Windows PowerShell installer for Claude Code with Lanyun
+# This version has better error handling and progress indication
 
-# Set error action preference
-$ErrorActionPreference = "Stop"
+param(
+    [switch]$SkipNodeCheck
+)
 
-function Install-NodeJS {
-    Write-Host "🚀 Installing Node.js on Windows..." -ForegroundColor Green
-    
-    # Download Node.js installer (v22 LTS)
-    $nodeVersion = "22.17.0"
-    $nodeUrl = "https://nodejs.org/dist/v$nodeVersion/node-v$nodeVersion-x64.msi"
-    $installerPath = "$env:TEMP\nodejs.msi"
-    
-    Write-Host "📥 Downloading Node.js v$nodeVersion..." -ForegroundColor Yellow
-    try {
-        Invoke-WebRequest -Uri $nodeUrl -OutFile $installerPath -UseBasicParsing
-    } catch {
-        Write-Host "❌ Failed to download Node.js: $_" -ForegroundColor Red
-        exit 1
-    }
-    
-    Write-Host "📦 Installing Node.js..." -ForegroundColor Yellow
-    try {
-        Start-Process msiexec.exe -Wait -ArgumentList "/i", $installerPath, "/quiet", "/qn", "/norestart"
-        Remove-Item $installerPath -Force
-    } catch {
-        Write-Host "❌ Failed to install Node.js: $_" -ForegroundColor Red
-        exit 1
-    }
-    
-    # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    
-    Write-Host "✅ Node.js installation completed!" -ForegroundColor Green
+# Basic setup
+$ErrorActionPreference = "Continue"
+$ProgressPreference = 'SilentlyContinue'
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host " Claude Code Lanyun Installer" -ForegroundColor Cyan
+Write-Host " 蓝云 Claude Code 安装程序" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Function to test if running as admin
+function Test-Administrator {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# Check if running as administrator
-if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "⚠️  This script requires Administrator privileges to set system environment variables." -ForegroundColor Yellow
-    Write-Host "⚠️  Please run PowerShell as Administrator and try again." -ForegroundColor Yellow
+# Check admin rights
+if (-not (Test-Administrator)) {
+    Write-Host "⚠️  需要管理员权限来设置环境变量" -ForegroundColor Yellow
+    Write-Host "⚠️  This script needs Administrator privileges" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Or use the following command in an elevated PowerShell:" -ForegroundColor Cyan
-    Write-Host "iwr -useb https://raw.githubusercontent.com/LanyunAI-labs/lanyun-cc/main/install_lanyun.ps1 | iex" -ForegroundColor White
+    Write-Host "请以管理员身份重新运行 PowerShell" -ForegroundColor Cyan
+    Write-Host "Please run PowerShell as Administrator" -ForegroundColor Cyan
+    Write-Host ""
+    Read-Host "Press Enter to exit"
     exit 1
 }
 
-# Check if Node.js is already installed
-try {
-    $nodeVersion = & node -v 2>$null
-    if ($nodeVersion) {
-        $majorVersion = [int]($nodeVersion -replace 'v(\d+)\..*', '$1')
-        if ($majorVersion -ge 18) {
-            Write-Host "Node.js is already installed: $nodeVersion" -ForegroundColor Green
-        } else {
-            Write-Host "Node.js $nodeVersion is installed but version < 18. Upgrading..." -ForegroundColor Yellow
-            Install-NodeJS
-        }
-    }
-} catch {
-    Write-Host "Node.js not found. Installing..." -ForegroundColor Yellow
-    Install-NodeJS
-}
-
-# Refresh PATH again to ensure npm is available
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-# Check if Claude Code is already installed
-try {
-    $claudeVersion = & claude --version 2>$null
-    if ($claudeVersion) {
-        Write-Host "Claude Code is already installed: $claudeVersion" -ForegroundColor Green
-    } else {
-        throw "Not installed"
-    }
-} catch {
-    Write-Host "Claude Code not found. Installing..." -ForegroundColor Yellow
+# Step 1: Check Node.js
+if (-not $SkipNodeCheck) {
+    Write-Host "📋 Checking Node.js installation..." -ForegroundColor Yellow
+    
     try {
-        & npm install -g @anthropic-ai/claude-code
-        if ($LASTEXITCODE -ne 0) {
-            throw "npm install failed"
+        $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+        if ($nodeCmd) {
+            $nodeVersion = & node -v 2>$null
+            Write-Host "✅ Node.js found: $nodeVersion" -ForegroundColor Green
+            
+            $majorVersion = [int]($nodeVersion -replace 'v(\d+)\..*', '$1')
+            if ($majorVersion -lt 18) {
+                Write-Host "⚠️  Node.js version is less than 18. Please update manually." -ForegroundColor Yellow
+                Write-Host "   Download from: https://nodejs.org/" -ForegroundColor Gray
+                Read-Host "Press Enter to exit"
+                exit 1
+            }
+        } else {
+            throw "Node.js not found"
         }
     } catch {
-        Write-Host "❌ Failed to install Claude Code: $_" -ForegroundColor Red
+        Write-Host "❌ Node.js not found. Please install Node.js first." -ForegroundColor Red
+        Write-Host "   Download from: https://nodejs.org/" -ForegroundColor Gray
+        Write-Host "   推荐下载 LTS 版本" -ForegroundColor Gray
+        Read-Host "Press Enter to exit"
         exit 1
     }
 }
 
-# Configure Claude Code to skip onboarding
-Write-Host "Configuring Claude Code to skip onboarding..." -ForegroundColor Yellow
-$claudeConfigPath = "$env:USERPROFILE\.claude.json"
+# Step 2: Install Claude Code
+Write-Host ""
+Write-Host "📦 Installing Claude Code CLI..." -ForegroundColor Yellow
+
 try {
-    if (Test-Path $claudeConfigPath) {
-        $config = Get-Content $claudeConfigPath | ConvertFrom-Json
-        $config.hasCompletedOnboarding = $true
-        $config | ConvertTo-Json | Set-Content $claudeConfigPath -Encoding UTF8
+    # Check if claude is already installed
+    $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+    if ($claudeCmd) {
+        Write-Host "✅ Claude Code is already installed" -ForegroundColor Green
     } else {
-        @{ hasCompletedOnboarding = $true } | ConvertTo-Json | Set-Content $claudeConfigPath -Encoding UTF8
+        Write-Host "   Running: npm install -g @anthropic-ai/claude-code" -ForegroundColor Gray
+        $output = & npm install -g @anthropic-ai/claude-code 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ Claude Code installed successfully" -ForegroundColor Green
+        } else {
+            throw "npm install failed: $output"
+        }
     }
 } catch {
-    Write-Host "⚠️  Warning: Could not configure Claude Code settings: $_" -ForegroundColor Yellow
+    Write-Host "❌ Failed to install Claude Code: $_" -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
 }
 
-# Prompt user for API key
+# Step 3: Configure Claude settings
 Write-Host ""
-Write-Host "🔑 Please enter your lanyun API key:" -ForegroundColor Cyan
-Write-Host "🔑 请输入您的蓝云 API 密钥：" -ForegroundColor Cyan
-Write-Host "   You can get your API key from: https://maas.lanyun.net/" -ForegroundColor Gray
-Write-Host "   您可以从这里获取 API 密钥：https://maas.lanyun.net/" -ForegroundColor Gray
+Write-Host "⚙️  Configuring Claude Code..." -ForegroundColor Yellow
+
+$claudeConfigPath = "$env:USERPROFILE\.claude.json"
+try {
+    $config = @{ hasCompletedOnboarding = $true }
+    
+    if (Test-Path $claudeConfigPath) {
+        $existingConfig = Get-Content $claudeConfigPath -Raw | ConvertFrom-Json
+        $existingConfig | Add-Member -MemberType NoteProperty -Name hasCompletedOnboarding -Value $true -Force
+        $config = $existingConfig
+    }
+    
+    $config | ConvertTo-Json -Depth 10 | Set-Content $claudeConfigPath -Encoding UTF8
+    Write-Host "✅ Configuration updated" -ForegroundColor Green
+} catch {
+    Write-Host "⚠️  Warning: Could not update configuration file" -ForegroundColor Yellow
+}
+
+# Step 4: Get API Key
+Write-Host ""
+Write-Host "🔑 API Key Configuration" -ForegroundColor Cyan
+Write-Host "   获取 API Key: https://maas.lanyun.net/" -ForegroundColor Gray
 Write-Host ""
 
-$apiKey = Read-Host -AsSecureString "API Key"
+$apiKey = Read-Host -Prompt "请输入您的 API Key (Enter your API key)" -AsSecureString
 $apiKeyPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($apiKey))
 
 if ([string]::IsNullOrWhiteSpace($apiKeyPlain)) {
-    Write-Host "⚠️  API key cannot be empty. Please run the script again." -ForegroundColor Red
+    Write-Host "❌ API key cannot be empty" -ForegroundColor Red
+    Read-Host "Press Enter to exit"
     exit 1
 }
 
-# Prompt user for model
+# Step 5: Get Model
 Write-Host ""
-Write-Host "🤖 Please enter the Claude model to use (press Enter for default 'k2'):" -ForegroundColor Cyan
-Write-Host "🤖 请输入要使用的 Claude 模型（按回车使用默认值 'k2'）：" -ForegroundColor Cyan
-Write-Host ""
-
-$model = Read-Host "Model"
+$model = Read-Host -Prompt "请输入模型名称 (Enter model name) [默认/default: k2]"
 if ([string]::IsNullOrWhiteSpace($model)) {
     $model = "k2"
-    Write-Host "ℹ️  Using default model: k2" -ForegroundColor Blue
 }
+Write-Host "✅ Using model: $model" -ForegroundColor Green
 
-# Set environment variables
+# Step 6: Set Environment Variables
 Write-Host ""
-Write-Host "📝 Setting system environment variables..." -ForegroundColor Yellow
+Write-Host "🔧 Setting environment variables..." -ForegroundColor Yellow
 
 try {
-    # Set system environment variables (requires admin)
     [System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "https://maas-api.lanyun.net/anthropic-k2/", "Machine")
     [System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", $apiKeyPlain, "Machine")
     [System.Environment]::SetEnvironmentVariable("ANTHROPIC_MODEL", $model, "Machine")
@@ -144,18 +145,23 @@ try {
     $env:ANTHROPIC_API_KEY = $apiKeyPlain
     $env:ANTHROPIC_MODEL = $model
     
-    Write-Host "✅ Environment variables set successfully!" -ForegroundColor Green
+    Write-Host "✅ Environment variables set successfully" -ForegroundColor Green
 } catch {
     Write-Host "❌ Failed to set environment variables: $_" -ForegroundColor Red
+    Read-Host "Press Enter to exit"
     exit 1
 }
 
+# Success
 Write-Host ""
-Write-Host "🎉 Installation completed successfully!" -ForegroundColor Green
-Write-Host "🎉 安装成功完成！" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host " 🎉 Installation Completed! 安装完成！" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "⚠️  IMPORTANT: Close and reopen your terminal/PowerShell to use Claude Code" -ForegroundColor Yellow
-Write-Host "⚠️  重要：关闭并重新打开您的终端/PowerShell 以使用 Claude Code" -ForegroundColor Yellow
+Write-Host "⚠️  请关闭并重新打开终端来使用 claude 命令" -ForegroundColor Yellow
+Write-Host "⚠️  Please close and reopen your terminal to use 'claude' command" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "🚀 After that, you can use: claude" -ForegroundColor Cyan
-Write-Host "🚀 之后即可使用：claude" -ForegroundColor Cyan
+Write-Host "Usage: claude" -ForegroundColor Cyan
+Write-Host ""
+
+Read-Host "Press Enter to exit"
