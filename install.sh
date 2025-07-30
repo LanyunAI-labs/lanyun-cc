@@ -70,7 +70,7 @@ node --eval '
 
 # Prompt user for API key
 echo "🔑 Please enter your lanyun API key:"
-echo "🔑 请输入您的蓝云 API 密钥："
+echo "🔑 请输入您的蓝耘 API 密钥："
 echo "   You can get your API key from: https://maas.lanyun.net/"
 echo "   您可以从这里获取 API 密钥：https://maas.lanyun.net/"
 echo "   Note: The input is hidden for security. Please paste your API key directly."
