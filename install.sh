@@ -128,13 +128,32 @@ else
     echo "✅ Environment variables added to $rc_file"
 fi
 
-# Automatically source the configuration file
-echo ""
-echo "🔄 Loading environment variables..."
-source "$rc_file"
+# If script is being sourced, load the environment variables
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    echo ""
+    echo "🔄 Loading environment variables..."
+    source "$rc_file"
+    echo "✅ Environment variables loaded in current shell!"
+fi
 
 echo ""
 echo "🎉 Installation completed successfully!"
 echo ""
-echo "🚀 You can now start using Claude Code with:"
-echo "   claude"
+
+# Check if script was sourced
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    echo "🚀 You can now start using Claude Code with:"
+    echo "🚀 现在您可以开始使用 Claude Code 了："
+    echo "   claude"
+else
+    echo "⚠️  IMPORTANT: To use the environment variables in your current shell, please run:"
+    echo "⚠️  重要提示：要在当前 shell 中使用环境变量，请运行："
+    echo "   source $rc_file"
+    echo ""
+    echo "   Or restart your terminal."
+    echo "   或者重启您的终端。"
+    echo ""
+    echo "🚀 After that, you can start using Claude Code with:"
+    echo "🚀 之后，您可以使用以下命令启动 Claude Code："
+    echo "   claude"
+fi
